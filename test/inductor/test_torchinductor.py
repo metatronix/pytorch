@@ -160,6 +160,17 @@ if TEST_WITH_ROCM:
     torch._inductor.config.force_layout_optimization = 1
     os.environ["PYTORCH_MIOPEN_SUGGEST_NHWC"] = "1"
 
+
+def get_test_device_name():
+    """Helper function to get device name for tests based on ROCm environment."""
+    return "hip" if TEST_WITH_ROCM else "cuda"
+
+
+def get_test_dispatch_key():
+    """Helper function to get dispatch key for tests based on ROCm environment."""
+    return "HIP" if TEST_WITH_ROCM else "CUDA"
+
+
 aten = torch.ops.aten
 
 requires_multigpu = functools.partial(
@@ -1045,8 +1056,8 @@ class CommonTemplate:
         dispatch_key = "CPU"
         device = "cpu"
         if self.device.lower() == "cuda":
-            dispatch_key = "CUDA"
-            device = "cuda"
+            dispatch_key = get_test_dispatch_key()
+            device = get_test_device_name()
 
         with _scoped_library("aten", "IMPL") as torch_compile_op_lib_impl:
             row = 128
@@ -3215,7 +3226,7 @@ class CommonTemplate:
 
     @xfail_if_triton_cpu
     def test_round_correctness(self):
-        if self.device == "cuda":
+        if self.device == get_test_device_name():
             raise unittest.SkipTest("need to debug tl.libdevice on A100/V100")
 
         def fn(a):
