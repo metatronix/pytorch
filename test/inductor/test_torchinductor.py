@@ -6738,10 +6738,13 @@ class CommonTemplate:
         torch._dynamo.mark_dynamic(x, 2)
 
         post_grad_graph = get_post_grad_graph(f, (x,))
+        device_str = "hip" if TEST_WITH_ROCM else "cuda"
+        if self.device == "cpu":
+            device_str = "cpu"
         expected_graph = f"""\
-def forward(self, arg0_1: "Sym(s77)", arg1_1: "Sym(s27)", arg2_1: "Sym(s53)", arg3_1: "f32[s77, s27, s53][s27*s53, s53, 1]{str(x.device)}"):
-        add: "f32[s77, s27, s53][s27*s53, s53, 1]{str(x.device)}" = torch.ops.aten.add.Tensor(arg3_1, 1);  arg3_1 = None
-        add_9: "f32[s77, s27, s53][s27*s53, s53, 1]{str(x.device)}" = torch.ops.aten.add.Tensor(add, 1);  add = None
+def forward(self, arg0_1: "Sym(s77)", arg1_1: "Sym(s27)", arg2_1: "Sym(s53)", arg3_1: "f32[s77, s27, s53][s27*s53, s53, 1]{device_str}"):
+        add: "f32[s77, s27, s53][s27*s53, s53, 1]{device_str}" = torch.ops.aten.add.Tensor(arg3_1, 1);  arg3_1 = None
+        add_9: "f32[s77, s27, s53][s27*s53, s53, 1]{device_str}" = torch.ops.aten.add.Tensor(add, 1);  add = None
         return (add_9,)"""  # noqa: B950
         self.assertExpectedInline(
             post_grad_graph,
@@ -6790,11 +6793,15 @@ def forward(self, arg0_1: "Sym(s77)", arg1_1: "Sym(s27)", arg2_1: "f32[s77, s27,
         torch._dynamo.mark_dynamic(x, 2)
 
         post_grad_graph = get_post_grad_graph(f, (x,))
+        device_str = "hip" if TEST_WITH_ROCM else "cuda"
+        if self.device == "cpu":
+            device_str = "cpu"
+        device_repr = f"device(type='{device_str}')"
         expected_graph = f"""\
-def forward(self, arg0_1: "Sym(s77)", arg1_1: "Sym(s27)", arg2_1: "Sym(s53)", arg3_1: "f32[s77, s27, s53][s27*s53, s53, 1]{str(x.device)}"):
-        empty: "f32[s77, s27, s53][s27*s53, s53, 1]{str(x.device)}" = torch.ops.aten.empty.memory_format([arg0_1, arg1_1, arg2_1], dtype = torch.float32, layout = torch.strided, device = {repr(x.device)}, pin_memory = False);  arg0_1 = arg1_1 = arg2_1 = empty = None
-        add: "f32[s77, s27, s53][s27*s53, s53, 1]{str(x.device)}" = torch.ops.aten.add.Tensor(arg3_1, 1);  arg3_1 = None
-        add_13: "f32[s77, s27, s53][s27*s53, s53, 1]{str(x.device)}" = torch.ops.aten.add.Tensor(add, 1);  add = None
+def forward(self, arg0_1: "Sym(s77)", arg1_1: "Sym(s27)", arg2_1: "Sym(s53)", arg3_1: "f32[s77, s27, s53][s27*s53, s53, 1]{device_str}"):
+        empty: "f32[s77, s27, s53][s27*s53, s53, 1]{device_str}" = torch.ops.aten.empty.memory_format([arg0_1, arg1_1, arg2_1], dtype = torch.float32, layout = torch.strided, device = {device_repr}, pin_memory = False);  arg0_1 = arg1_1 = arg2_1 = empty = None
+        add: "f32[s77, s27, s53][s27*s53, s53, 1]{device_str}" = torch.ops.aten.add.Tensor(arg3_1, 1);  arg3_1 = None
+        add_13: "f32[s77, s27, s53][s27*s53, s53, 1]{device_str}" = torch.ops.aten.add.Tensor(add, 1);  add = None
         return (add_13,)"""  # noqa: B950
         self.assertExpectedInline(
             post_grad_graph,
